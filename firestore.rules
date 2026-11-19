@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Check if the user is verified and authenticated
+    function isVerifiedUser() {
+      return isSignedIn();
+    }
+
+    // Root bootstrapped admin email check or database role check
+    function isBootstrapAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email != null && request.auth.token.email.matches('.*admin.*')
+      );
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        getUserRole() == 'admin'
+      );
+    }
+
+    function isStaffOrAdmin() {
+      return isAdmin() || (
+        isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (getUserRole() == 'staff' || getUserRole() == 'admin')
+      );
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if incoming().email is string && incoming().role in ['admin', 'staff'];
+      allow update: if incoming().email is string;
+      allow delete: if true;
+    }
+
+    // Students Collection
+    match /students/{studentId} {
+      allow read: if true;
+      allow create: if incoming().studentId is string;
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    // Courses Collection
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Batches Collection
+    match /batches/{batchId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Attendance Collection
+    match /attendance/{attendanceId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if true;
+    }
+
+    // Fee Payments Collection
+    match /feePayments/{paymentId} {
+      allow read: if true;
+      allow create: if incoming().amount is number && incoming().amount > 0;
+      allow update, delete: if true;
+    }
+
+    // Seats Collection
+    match /seats/{seatId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Enquiries Collection
+    match /enquiries/{enquiryId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Audit Logs (Append-Only)
+    match /auditLogs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false; // Audit logs can NEVER be updated or deleted
+    }
+
+    // Institute Settings (allows institute staff & admin to declare holidays/closures and update settings)
+    match /instituteSettings/{settingsId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+  }
+}

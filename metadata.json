@@ -1,0 +1,8 @@
+{
+  "name": "Demo Computer Class Management System",
+  "description": "Comprehensive management system for Demo Computer Class: student admissions, batches, attendance tracking, fee receipts, computer lab seat allocation, reports, and AI institute assistant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
